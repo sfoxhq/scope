@@ -40,8 +40,8 @@ type CensorConfig struct {
 	HideEnvironmentVariables bool
 }
 
-// GetCensorConfigFromQueryParams extracts censor config from request query params.
-func GetCensorConfigFromQueryParams(req *http.Request) CensorConfig {
+// GetCensorConfigFromRequest extracts censor config from request query params.
+func GetCensorConfigFromRequest(req *http.Request) CensorConfig {
 	return CensorConfig{
 		HideCommandLineArguments: true || req.URL.Query().Get("hideCommandLineArguments") == "true",
 		HideEnvironmentVariables: true || req.URL.Query().Get("hideEnvironmentVariables") == "true",
