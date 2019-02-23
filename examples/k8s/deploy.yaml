@@ -33,3 +33,17 @@ spec:
           ports:
             - containerPort: 4040
               protocol: TCP
+      tolerations:
+      - key: monitoring
+        operator: Equal
+        value: prometheus
+        effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kops.k8s.io/instancegroup
+                operator: In
+                values:
+                - "monitoring"
