@@ -43,6 +43,7 @@ const (
 	DockerContainerUptime        = "docker_container_uptime"
 	DockerContainerRestartCount  = "docker_container_restart_count"
 	DockerContainerNetworkMode   = "docker_container_network_mode"
+	DockerEnvPrefix              = "docker_env_"
 	// probe/kubernetes
 	KubernetesName                 = "kubernetes_name"
 	KubernetesNamespace            = "kubernetes_namespace"
@@ -87,6 +88,7 @@ const (
 	KubernetesVolumeCapacity       = "kubernetes_volume_capacity"
 	KubernetesCloneVolumeSnapshot  = "kubernetes_clone_volume_snapshot"
 	KubernetesDeleteVolumeSnapshot = "kubernetes_delete_volume_snapshot"
+	KubernetesDescribe             = "kubernetes_describe"
 	// probe/awsecs
 	ECSCluster             = "ecs_cluster"
 	ECSCreatedAt           = "ecs_created_at"

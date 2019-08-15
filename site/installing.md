@@ -112,7 +112,7 @@ After it’s been launched, open your browser to `http://localhost:4040`.
 **Docker Compose Format Version 1:**
 
     scope:
-      image: weaveworks/scope:1.10.2
+      image: weaveworks/scope:1.11.4
       net: "host"
       pid: "host"
       privileged: true
@@ -128,7 +128,7 @@ After it’s been launched, open your browser to `http://localhost:4040`.
     version: '2'
     services:
       scope:
-        image: weaveworks/scope:1.10.2
+        image: weaveworks/scope:1.11.4
         network_mode: "host"
         pid: "host"
         privileged: true
@@ -145,10 +145,10 @@ Version 2 of this YAML file supports networks and volumes as defined by any plug
 
 ### <a name="k8s"></a>Kubernetes
 
-If your cluster is on GKE, first you need to grant permissions for the
-installation with:
-
-    kubectl create clusterrolebinding "cluster-admin-$(whoami)" --clusterrole=cluster-admin --user="$(gcloud config get-value core/account)"
+> If your cluster is on GKE, first you need to grant permissions for the
+> installation with:
+>
+>     kubectl create clusterrolebinding "cluster-admin-$(whoami)" --clusterrole=cluster-admin --user="$(gcloud config get-value core/account)"
 
 To install Weave Scope on your Kubernetes cluster, run
 
@@ -168,6 +168,11 @@ Allowable parameters for the launcher URL:
 
 The URL is: http://localhost:4040.
 
+>**Note:** Do not expose the Scope service to the Internet, e.g. by
+   changing the type to NodePort or LoadBalancer. Scope allows anyone
+   with access to the user interface control over your hosts and
+   containers.
+
 ### Kubernetes (local clone)
 
 A simple way to get Scope running in a Kubernetes setting is to
@@ -185,7 +190,7 @@ A simple way to get Scope running in a Kubernetes setting is to
 1. Run
 
    ```sh
-   kubectl apply -f example/k8s
+   kubectl apply -f examples/k8s
    ```
 
    to deploy Scope to your cluster.
@@ -243,7 +248,7 @@ The link below will launch a sample app using a Cloudformation template, but you
 
 [![](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/new?templateURL=https:%2F%2Fs3.amazonaws.com%2Fweaveworks-cfn-public%2Fintegrations%2Fecs-identiorca.json)
 
-For step by step instructions on how to configure the stack, see: [Install Weave to AWS with One-Click](https://www.weave.works/docs/cloud/latest/install/ec2-no-kubernetes/)
+For step by step instructions on how to configure the stack, see: [Install Weave to AWS with One-Click](https://www.weave.works/docs/cloud/latest/install/ecs-no-kubernetes/)
 
 ### <a name="minimesos"></a>minimesos
 

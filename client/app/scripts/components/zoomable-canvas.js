@@ -8,8 +8,8 @@ import { drag } from 'd3-drag';
 import { event as d3Event, select } from 'd3-selection';
 import { zoomFactor } from 'weaveworks-ui-components/lib/utils/zooming';
 
-import Logo from '../components/logo';
-import ZoomControl from '../components/zoom-control';
+import Logo from './logo';
+import ZoomControl from './zoom-control';
 import { cacheZoomState } from '../actions/app-actions';
 import { applyTransform, inverseTransform } from '../utils/transform-utils';
 import { activeTopologyZoomCacheKeyPathSelector } from '../selectors/zooming';
@@ -63,10 +63,16 @@ class ZoomableCanvas extends React.Component {
 
     this.updateZoomLimits(this.props);
     this.restoreZoomState(this.props);
+    document
+      .getElementById('canvas')
+      .addEventListener('wheel', this.handleZoom, { passive: false });
   }
 
   componentWillUnmount() {
     this.debouncedCacheZoom.cancel();
+    document
+      .getElementById('canvas')
+      .removeEventListener('wheel', this.handleZoom, { passive: false });
   }
 
   componentWillReceiveProps(nextProps) {
@@ -104,18 +110,20 @@ class ZoomableCanvas extends React.Component {
 
     return (
       <div className="zoomable-canvas">
-        <svg id="canvas" className={className} onClick={this.props.onClick} onWheel={this.handleZoom}>
+        <svg id="canvas" className={className} onClick={this.props.onClick}>
           <Logo transform="translate(24,24) scale(0.25)" />
           <g className="zoom-content">
             {this.props.children(this.state)}
           </g>
         </svg>
-        {this.canChangeZoom() && <ZoomControl
+        {this.canChangeZoom() && (
+        <ZoomControl
           zoomAction={this.handleZoomControlAction}
           minScale={this.state.minScale}
           maxScale={this.state.maxScale}
           scale={this.state.scaleX}
-        />}
+        />
+        )}
       </div>
     );
   }

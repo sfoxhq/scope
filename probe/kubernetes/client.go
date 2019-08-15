@@ -1,9 +1,11 @@
 package kubernetes
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +16,7 @@ import (
 	snapshot "github.com/openebs/k8s-snapshot-client/snapshot/pkg/client/clientset/versioned"
 	"github.com/pborman/uuid"
 	log "github.com/sirupsen/logrus"
+	apiappsv1 "k8s.io/api/apps/v1"
 	apiappsv1beta1 "k8s.io/api/apps/v1beta1"
 	apibatchv1 "k8s.io/api/batch/v1"
 	apibatchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -22,6 +25,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -32,6 +36,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	kubectldescribe "k8s.io/kubernetes/pkg/kubectl/describe"
+	kubectl "k8s.io/kubernetes/pkg/kubectl/describe/versioned"
 )
 
 // Client keeps track of running kubernetes pods and services
@@ -49,16 +55,33 @@ type Client interface {
 	WalkStorageClasses(f func(StorageClass) error) error
 	WalkVolumeSnapshots(f func(VolumeSnapshot) error) error
 	WalkVolumeSnapshotData(f func(VolumeSnapshotData) error) error
+	WalkJobs(f func(Job) error) error
 
 	WatchPods(f func(Event, Pod))
 
 	CloneVolumeSnapshot(namespaceID, volumeSnapshotID, persistentVolumeClaimID, capacity string) error
 	CreateVolumeSnapshot(namespaceID, persistentVolumeClaimID, capacity string) error
 	GetLogs(namespaceID, podID string, containerNames []string) (io.ReadCloser, error)
+	Describe(namespaceID, resourceID string, groupKind schema.GroupKind, restMapping apimeta.RESTMapping) (io.ReadCloser, error)
 	DeletePod(namespaceID, podID string) error
 	DeleteVolumeSnapshot(namespaceID, volumeSnapshotID string) error
-	ScaleUp(resource, namespaceID, id string) error
-	ScaleDown(resource, namespaceID, id string) error
+	ScaleUp(namespaceID, id string) error
+	ScaleDown(namespaceID, id string) error
+}
+
+// ResourceMap is the mapping of resource and their GroupKind
+var ResourceMap = map[string]schema.GroupKind{
+	"Pod":                   {Group: apiv1.GroupName, Kind: "Pod"},
+	"Service":               {Group: apiv1.GroupName, Kind: "Service"},
+	"Deployment":            {Group: apiappsv1.GroupName, Kind: "Deployment"},
+	"DaemonSet":             {Group: apiappsv1.GroupName, Kind: "DaemonSet"},
+	"StatefulSet":           {Group: apiappsv1.GroupName, Kind: "StatefulSet"},
+	"Job":                   {Group: apibatchv1.GroupName, Kind: "Job"},
+	"CronJob":               {Group: apibatchv1.GroupName, Kind: "CronJob"},
+	"Node":                  {Group: apiv1.GroupName, Kind: "Node"},
+	"PersistentVolume":      {Group: apiv1.GroupName, Kind: "PersistentVolume"},
+	"PersistentVolumeClaim": {Group: apiv1.GroupName, Kind: "PersistentVolumeClaim"},
+	"StorageClass":          {Group: storagev1.GroupName, Kind: "StorageClass"},
 }
 
 type client struct {
@@ -434,6 +457,16 @@ func (c *client) WalkVolumeSnapshotData(f func(VolumeSnapshotData) error) error 
 	return nil
 }
 
+func (c *client) WalkJobs(f func(Job) error) error {
+	for _, m := range c.jobStore.List() {
+		job := m.(*apibatchv1.Job)
+		if err := f(NewJob(job)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *client) CloneVolumeSnapshot(namespaceID, volumeSnapshotID, persistentVolumeClaimID, capacity string) error {
 	var scName string
 	var claimSize string
@@ -541,6 +574,32 @@ func (c *client) GetLogs(namespaceID, podID string, containerNames []string) (io
 	return NewLogReadCloser(readClosersWithLabel), nil
 }
 
+func (c *client) Describe(namespaceID, resourceID string, groupKind schema.GroupKind, restMapping apimeta.RESTMapping) (io.ReadCloser, error) {
+	readClosersWithLabel := map[io.ReadCloser]string{}
+	restConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	describer, ok := kubectl.DescriberFor(groupKind, restConfig)
+	if !ok {
+		describer, ok = kubectl.GenericDescriberFor(&restMapping, restConfig)
+		if !ok {
+			return nil, errors.New("Resource not found")
+		}
+	}
+	describerSetting := kubectldescribe.DescriberSettings{
+		ShowEvents: true,
+	}
+	obj, err := describer.Describe(namespaceID, resourceID, describerSetting)
+	if err != nil {
+		return nil, err
+	}
+	formattedObj := ioutil.NopCloser(bytes.NewReader([]byte(obj)))
+	readClosersWithLabel[formattedObj] = "describe"
+
+	return NewLogReadCloser(readClosersWithLabel), nil
+}
+
 func (c *client) DeletePod(namespaceID, podID string) error {
 	return c.client.CoreV1().Pods(namespaceID).Delete(podID, &metav1.DeleteOptions{})
 }
@@ -549,26 +608,26 @@ func (c *client) DeleteVolumeSnapshot(namespaceID, volumeSnapshotID string) erro
 	return c.snapshotClient.VolumesnapshotV1().VolumeSnapshots(namespaceID).Delete(volumeSnapshotID, &metav1.DeleteOptions{})
 }
 
-func (c *client) ScaleUp(resource, namespaceID, id string) error {
-	return c.modifyScale(resource, namespaceID, id, func(scale *apiextensionsv1beta1.Scale) {
+func (c *client) ScaleUp(namespaceID, id string) error {
+	return c.modifyScale(namespaceID, id, func(scale *apiextensionsv1beta1.Scale) {
 		scale.Spec.Replicas++
 	})
 }
 
-func (c *client) ScaleDown(resource, namespaceID, id string) error {
-	return c.modifyScale(resource, namespaceID, id, func(scale *apiextensionsv1beta1.Scale) {
+func (c *client) ScaleDown(namespaceID, id string) error {
+	return c.modifyScale(namespaceID, id, func(scale *apiextensionsv1beta1.Scale) {
 		scale.Spec.Replicas--
 	})
 }
 
-func (c *client) modifyScale(resource, namespace, id string, f func(*apiextensionsv1beta1.Scale)) error {
-	scaler := c.client.Extensions().Scales(namespace)
-	scale, err := scaler.Get(resource, id)
+func (c *client) modifyScale(namespaceID, id string, f func(*apiextensionsv1beta1.Scale)) error {
+	scaler := c.client.ExtensionsV1beta1().Deployments(namespaceID)
+	scale, err := scaler.GetScale(id, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	f(scale)
-	_, err = scaler.Update(resource, scale)
+	_, err = scaler.UpdateScale(id, scale)
 	return err
 }
 

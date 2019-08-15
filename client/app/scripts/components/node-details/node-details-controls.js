@@ -15,18 +15,23 @@ export default function NodeDetailsControls({
 
   return (
     <div className="node-details-controls">
-      {error &&
+      {error
+        && (
         <div className="node-details-controls-error" title={error}>
           <i className="node-details-controls-error-icon fa fa-exclamation-triangle" />
           <span className="node-details-controls-error-messages">{error}</span>
         </div>
+        )
       }
       <span className="node-details-controls-buttons">
-        {sortBy(controls, 'rank').map(control => (<NodeDetailsControlButton
-          nodeId={nodeId}
-          control={control}
-          pending={pending}
-          key={control.id} />))}
+        {sortBy(controls, 'rank').map(control => (
+          <NodeDetailsControlButton
+            nodeId={nodeId}
+            control={control}
+            pending={pending}
+            key={control.id}
+          />
+        ))}
       </span>
       {controls && <span title="Applying..." className={spinnerClassName} />}
     </div>

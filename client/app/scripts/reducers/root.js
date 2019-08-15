@@ -1,7 +1,9 @@
 /* eslint-disable import/no-webpack-loader-syntax, import/no-unresolved */
 import debug from 'debug';
 import moment from 'moment';
-import { size, each, includes, isEqual } from 'lodash';
+import {
+  size, each, includes, isEqual
+} from 'lodash';
 import {
   fromJS,
   is as isDeepEqual,
@@ -691,6 +693,9 @@ export function rootReducer(state = initialState, action) {
       }
       if (action.state.gridSortedDesc !== undefined) {
         state = state.set('gridSortedDesc', action.state.gridSortedDesc);
+      }
+      if (action.state.contrastMode !== undefined) {
+        state = state.set('contrastMode', action.state.contrastMode);
       }
       if (action.state.showingNetworks) {
         state = state.set('showingNetworks', action.state.showingNetworks);

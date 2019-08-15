@@ -9,7 +9,9 @@ import (
 
 	apiv1 "k8s.io/api/core/v1"
 	apiv1beta1 "k8s.io/api/extensions/v1beta1"
+	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/weaveworks/scope/common/xfer"
@@ -170,6 +172,9 @@ func (c *mockClient) WalkVolumeSnapshots(f func(kubernetes.VolumeSnapshot) error
 func (c *mockClient) WalkVolumeSnapshotData(f func(kubernetes.VolumeSnapshotData) error) error {
 	return nil
 }
+func (c *mockClient) WalkJobs(f func(kubernetes.Job) error) error {
+	return nil
+}
 func (*mockClient) WatchPods(func(kubernetes.Event, kubernetes.Pod)) {}
 func (c *mockClient) GetLogs(namespaceID, podName string, _ []string) (io.ReadCloser, error) {
 	r, ok := c.logs[namespaceID+";"+podName]
@@ -181,10 +186,10 @@ func (c *mockClient) GetLogs(namespaceID, podName string, _ []string) (io.ReadCl
 func (c *mockClient) DeletePod(namespaceID, podID string) error {
 	return nil
 }
-func (c *mockClient) ScaleUp(resource, namespaceID, id string) error {
+func (c *mockClient) ScaleUp(namespaceID, id string) error {
 	return nil
 }
-func (c *mockClient) ScaleDown(resource, namespaceID, id string) error {
+func (c *mockClient) ScaleDown(namespaceID, id string) error {
 	return nil
 }
 func (c *mockClient) CloneVolumeSnapshot(namespaceID, VolumeSnapshotID, persistentVolumeClaimID, capacity string) error {
@@ -195,6 +200,9 @@ func (c *mockClient) CreateVolumeSnapshot(namespaceID, persistentVolumeClaimID, 
 }
 func (c *mockClient) DeleteVolumeSnapshot(namespaceID, VolumeSnapshotID string) error {
 	return nil
+}
+func (c *mockClient) Describe(namespaceID, resourceID string, groupKind schema.GroupKind, restMapping k8smeta.RESTMapping) (io.ReadCloser, error) {
+	return nil, nil
 }
 
 type mockPipeClient map[string]xfer.Pipe
